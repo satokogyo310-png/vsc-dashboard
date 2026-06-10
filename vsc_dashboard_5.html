@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VSC 会員数ダッシュボード</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap');
+:root{--bg:#0d0f14;--surface:#161920;--surface2:#1e2229;--border:rgba(255,255,255,0.07);--text:#e8eaf0;--muted:#6b7280;--ok:#22c55e;--warn:#f59e0b;--danger:#ef4444;--blue:#3b82f6;--teal:#14b8a6;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'Noto Sans JP',sans-serif;min-height:100vh;padding:24px 20px;max-width:1200px;margin:0 auto;}
+header{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;}
+.logo{font-size:11px;color:var(--muted);letter-spacing:.15em;text-transform:uppercase;margin-bottom:4px;}
+h1{font-size:22px;font-weight:500;letter-spacing:-.02em;}
+.tabs{display:flex;gap:4px;margin-bottom:20px;background:var(--surface);padding:4px;border-radius:10px;width:fit-content;flex-wrap:wrap;}
+.tab{padding:8px 16px;border-radius:7px;font-size:13px;cursor:pointer;border:none;background:transparent;color:var(--muted);font-family:'Noto Sans JP',sans-serif;transition:all .2s;}
+.tab.active{background:var(--surface2);color:var(--text);font-weight:500;}
+.auto-banner{background:var(--surface);border:1px solid rgba(59,130,246,0.25);border-radius:12px;padding:14px 18px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
+.auto-banner-text{font-size:13px;color:var(--muted);line-height:1.5;}
+.auto-banner-text strong{color:var(--text);}
+.btn-auto{background:var(--blue);color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-family:'Noto Sans JP',sans-serif;cursor:pointer;font-weight:500;transition:opacity .2s;white-space:nowrap;}
+.btn-auto:hover{opacity:.85;}
+.step-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px;}
+@media(max-width:640px){.step-grid{grid-template-columns:1fr;}}
+.step-card{border-radius:10px;padding:16px 18px;border:1px solid transparent;}
+.step-no{font-size:10px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:6px;font-family:'DM Mono',monospace;color:var(--muted);}
+.step-title{font-size:12px;font-weight:500;margin-bottom:6px;}
+.step-status{font-size:18px;font-weight:700;font-family:'DM Mono',monospace;margin-bottom:8px;}
+.step-action{font-size:11px;line-height:1.7;border-top:1px solid rgba(255,255,255,.07);padding-top:8px;color:var(--muted);}
+.s-ok{background:rgba(34,197,94,.07);border-color:rgba(34,197,94,.2);}
+.s-warn{background:rgba(245,158,11,.07);border-color:rgba(245,158,11,.2);}
+.s-danger{background:rgba(239,68,68,.07);border-color:rgba(239,68,68,.2);}
+.s-none{background:var(--surface);border-color:var(--border);}
+.c-ok{color:var(--ok);}.c-warn{color:var(--warn);}.c-danger{color:var(--danger);}.c-muted{color:var(--muted);}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:18px;}
+.metric{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;}
+.metric-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px;font-family:'DM Mono',monospace;}
+.metric-value{font-size:22px;font-weight:700;font-family:'DM Mono',monospace;letter-spacing:-.03em;}
+.metric-diff{font-size:11px;margin-top:3px;font-family:'DM Mono',monospace;}
+.up{color:var(--ok);}.down{color:var(--danger);}.flat{color:var(--muted);}
+.chart-section{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:18px;}
+.chart-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;}
+.chart-title-area h2{font-size:14px;font-weight:500;margin-bottom:4px;}
+.chart-title-area p{font-size:11px;color:var(--muted);}
+.period-btns{display:flex;gap:4px;}
+.period-btn{padding:5px 12px;border-radius:6px;font-size:11px;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:'DM Mono',monospace;transition:all .2s;}
+.period-btn.active{background:var(--surface2);color:var(--text);border-color:rgba(255,255,255,.15);}
+.legend{display:flex;gap:14px;flex-wrap:wrap;}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;}
+.legend-line{width:16px;height:2px;border-radius:99px;}
+.chart-wrap-main{position:relative;height:340px;}
+.chart-wrap-sub{position:relative;height:130px;margin-top:12px;border-top:1px solid var(--border);padding-top:12px;}
+.sheet-section{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:18px;}
+.sheet-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+.sheet-header h2{font-size:13px;font-weight:500;}
+.sheet-search{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-family:'DM Mono',monospace;font-size:12px;outline:none;width:160px;}
+.sheet-wrap{overflow-x:auto;max-height:420px;overflow-y:auto;}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+thead{position:sticky;top:0;z-index:1;}
+thead th{padding:9px 10px;text-align:right;font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;border-bottom:1px solid var(--border);font-weight:400;background:var(--surface2);white-space:nowrap;}
+thead th:first-child{text-align:left;}
+tbody tr{border-bottom:1px solid rgba(255,255,255,.04);transition:background .15s;}
+tbody tr:hover{background:var(--surface2);}
+tbody td{padding:8px 10px;text-align:right;font-family:'DM Mono',monospace;white-space:nowrap;}
+tbody td:first-child{text-align:left;color:var(--muted);font-size:11px;}
+.pill{display:inline-flex;font-size:10px;padding:1px 7px;border-radius:99px;font-family:'DM Mono',monospace;font-weight:500;}
+.pill-ok{background:rgba(34,197,94,.15);color:#4ade80;}
+.pill-warn{background:rgba(245,158,11,.15);color:#fbbf24;}
+.pill-danger{background:rgba(239,68,68,.15);color:#f87171;}
+.pill-none{background:rgba(107,114,128,.15);color:#9ca3af;}
+.input-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px 20px;margin-bottom:14px;}
+.section-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-family:'DM Mono',monospace;margin:10px 0 7px;border-left:2px solid var(--border);padding-left:8px;}
+.input-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:7px;margin-bottom:4px;}
+.input-group label{display:block;font-size:11px;color:var(--muted);margin-bottom:3px;font-family:'DM Mono',monospace;}
+.input-group input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 9px;color:var(--text);font-family:'DM Mono',monospace;font-size:13px;outline:none;transition:border-color .2s;}
+.input-group input:focus{border-color:var(--blue);}
+.btn-row{margin-top:14px;display:flex;align-items:center;flex-wrap:wrap;gap:8px;}
+.btn-primary{background:var(--blue);color:#fff;border:none;border-radius:7px;padding:9px 18px;font-size:13px;font-family:'Noto Sans JP',sans-serif;cursor:pointer;font-weight:500;transition:opacity .2s;}
+.btn-primary:hover{opacity:.85;}
+.btn-secondary{background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:7px;padding:9px 14px;font-size:12px;cursor:pointer;font-family:'Noto Sans JP',sans-serif;transition:all .2s;}
+.btn-secondary:hover{border-color:rgba(255,255,255,.2);color:var(--text);}
+.btn-danger{background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:7px;padding:9px 14px;font-size:12px;cursor:pointer;font-family:'Noto Sans JP',sans-serif;transition:all .2s;}
+.btn-danger:hover{border-color:var(--danger);color:var(--danger);}
+.auto-result{background:rgba(34,197,94,.07);border:1px solid rgba(34,197,94,.2);border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:12px;display:none;}
+.auto-result.show{display:block;}
+.past-data-banner{background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.2);border-radius:10px;padding:14px 18px;margin-bottom:14px;font-size:13px;}
+.past-data-banner strong{color:var(--warn);}
+.page{display:none;}.page.active{display:block;}
+.note{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.6;}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <p class="logo">Village Surf Club</p>
+    <h1>会員数ダッシュボード</h1>
+  </div>
+  <p style="font-size:12px;color:var(--muted);font-family:'DM Mono',monospace;" id="last-updated">最終更新: —</p>
+</header>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('dashboard',this)">ダッシュボード</button>
+  <button class="tab" onclick="switchTab('chart',this)">チャート</button>
+  <button class="tab" onclick="switchTab('sheet',this)">データ一覧</button>
+  <button class="tab" onclick="switchTab('input',this)">データ入力</button>
+  <button class="tab" onclick="switchTab('sns',this)">SNS比較</button>
+</div>
+
+<!-- ダッシュボード -->
+<div class="page active" id="page-dashboard">
+  <div class="auto-banner">
+    <div class="auto-banner-text"><strong>自動取得</strong>　Claudeが管理画面から数値を読み取り自動保存します。</div>
+    <button class="btn-auto" onclick="startAutoFetch()">▶ 今すぐ自動取得</button>
+  </div>
+  <div class="auto-result" id="auto-result"></div>
+  <div class="step-grid" id="step-grid">
+    <div class="step-card s-none"><div class="step-no">Step 1</div><div class="step-title">フロントエンドの状態</div><div class="step-status c-muted">—</div><div class="step-action">データを入力してください</div></div>
+    <div class="step-card s-none"><div class="step-no">Step 2</div><div class="step-title">ファネルの状態</div><div class="step-status c-muted">—</div><div class="step-action">フロントの状態次第</div></div>
+    <div class="step-card s-none"><div class="step-no">Step 3</div><div class="step-title">バックエンドの健全性</div><div class="step-status c-muted">—</div><div class="step-action">退会率・継続率の診断</div></div>
+  </div>
+  <div class="metrics">
+    <div class="metric"><div class="metric-label">フロント合計</div><div class="metric-value" id="m-front">—</div><div class="metric-diff flat" id="d-front">—</div></div>
+    <div class="metric"><div class="metric-label">フロント増減</div><div class="metric-value" id="m-fdiff">—</div><div class="metric-diff flat">前回比</div></div>
+    <div class="metric"><div class="metric-label">バックエンド合計</div><div class="metric-value" id="m-paid">—</div><div class="metric-diff flat" id="d-paid">—</div></div>
+    <div class="metric"><div class="metric-label">バックエンド増減</div><div class="metric-value" id="m-pdiff">—</div><div class="metric-diff flat">前回比</div></div>
+    <div class="metric"><div class="metric-label">無料会員</div><div class="metric-value" id="m-free">—</div><div class="metric-diff flat" id="d-free">—</div></div>
+  </div>
+  <div class="chart-section">
+    <div class="chart-top">
+      <div class="chart-title-area"><h2>推移チャート</h2><p>フロントエンド・バックエンド・無料会員</p></div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-line" style="background:var(--blue);"></div>フロント</div>
+        <div class="legend-item"><div class="legend-line" style="background:var(--teal);"></div>バックエンド</div>
+      </div>
+    </div>
+    <div class="chart-wrap-main"><canvas id="mini-chart" role="img" aria-label="会員数推移ミニチャート">推移グラフ</canvas></div>
+  </div>
+</div>
+
+<!-- チャート -->
+<div class="page" id="page-chart">
+  <div class="chart-section">
+    <div class="chart-top">
+      <div class="chart-title-area"><h2>会員数推移チャート</h2><p>ホバーで詳細数値を確認できます</p></div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
+        <div class="period-btns">
+          <button class="period-btn" onclick="setPeriod(6,this)">6件</button>
+          <button class="period-btn" onclick="setPeriod(12,this)">12件</button>
+          <button class="period-btn active" onclick="setPeriod(0,this)">全期間</button>
+        </div>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-line" style="background:var(--blue);"></div>フロント</div>
+          <div class="legend-item"><div class="legend-line" style="background:var(--teal);"></div>バックエンド</div>
+          <div class="legend-item"><div class="legend-line" style="background:var(--muted);"></div>無料</div>
+        </div>
+      </div>
+    </div>
+    <div class="chart-wrap-main"><canvas id="main-chart" role="img" aria-label="会員数推移メインチャート">会員数推移</canvas></div>
+    <div class="chart-wrap-sub">
+      <div style="font-size:10px;color:var(--muted);margin-bottom:6px;font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.08em;">フロント増減 vs バックエンド増減</div>
+      <div style="position:relative;height:100px;"><canvas id="diff-chart" role="img" aria-label="増減比較グラフ">増減グラフ</canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- データ一覧 -->
+<div class="page" id="page-sheet">
+  <div class="sheet-section">
+    <div class="sheet-header">
+      <h2>データ一覧 <span id="sheet-count" style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;"></span></h2>
+      <input class="sheet-search" type="text" placeholder="日付で絞り込み..." oninput="filterTable(this.value)">
+    </div>
+    <div class="sheet-wrap">
+      <table>
+        <thead><tr>
+          <th>日付</th><th>TM</th><th>RM</th><th>チャレンジ</th>
+          <th>フロント計</th><th>増減</th>
+          <th>無料</th><th>増減</th>
+          <th>RIM</th><th>VSC正</th><th>TAP</th><th>サポート</th><th>VSC</th>
+          <th>BE計</th><th>増減</th>
+          <th>Step1</th><th>Step2</th><th>Step3</th>
+        </tr></thead>
+        <tbody id="sheet-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- SNS比較 -->
+<div class="page" id="page-sns">
+  <div class="chart-section">
+    <div class="chart-top">
+      <div class="chart-title-area"><h2>SNS vs 会員数 比較チャート</h2><p>SNSフォロワーとフロント・バックエンドの相関</p></div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
+        <div class="period-btns">
+          <button class="period-btn" onclick="setPeriod(6,this)">6件</button>
+          <button class="period-btn" onclick="setPeriod(12,this)">12件</button>
+          <button class="period-btn active" onclick="setPeriod(0,this)">全期間</button>
+        </div>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-line" style="background:#ff0000;"></div>YouTube</div>
+          <div class="legend-item"><div class="legend-line" style="background:#e1306c;"></div>Instagram</div>
+          <div class="legend-item"><div class="legend-line" style="background:var(--blue);border-top:2px dashed var(--blue);height:0;width:16px;"></div>フロント</div>
+          <div class="legend-item"><div class="legend-line" style="background:var(--teal);border-top:2px dashed var(--teal);height:0;width:16px;"></div>バックエンド</div>
+        </div>
+      </div>
+    </div>
+    <div class="chart-wrap-main"><canvas id="sns-chart" role="img" aria-label="SNS比較チャート">SNS比較グラフ</canvas></div>
+    <div class="chart-wrap-sub">
+      <div style="font-size:10px;color:var(--muted);margin-bottom:6px;font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.08em;">SNS増減（YouTube・Instagram）</div>
+      <div style="position:relative;height:100px;"><canvas id="sns-diff-chart" role="img" aria-label="SNS増減グラフ">SNS増減グラフ</canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- データ入力 -->
+<div class="page" id="page-input">
+  <div class="auto-banner">
+    <div class="auto-banner-text"><strong>自動取得</strong>　Claudeが管理画面から数値を読み取り自動保存します。</div>
+    <button class="btn-auto" onclick="startAutoFetch()">▶ 今すぐ自動取得</button>
+  </div>
+  <div class="auto-result" id="auto-result2"></div>
+
+  <!-- 今日のデータ入力 -->
+  <div class="input-card">
+    <div style="font-size:13px;font-weight:500;margin-bottom:4px;">今日のデータを入力</div>
+    <div class="section-label">フロントエンド</div>
+    <div class="input-grid">
+      <div class="input-group"><label>TM会員</label><input type="number" id="in-tm" placeholder="427"></div>
+      <div class="input-group"><label>RM会員</label><input type="number" id="in-rm" placeholder="596"></div>
+      <div class="input-group"><label>チャレンジ会員</label><input type="number" id="in-ch" placeholder="1002"></div>
+    </div>
+    <div class="section-label">無料会員</div>
+    <div class="input-grid">
+      <div class="input-group"><label>無料会員</label><input type="number" id="in-free" placeholder="8398"></div>
+    </div>
+    <div class="section-label">バックエンド（有料サブスク）</div>
+    <div class="input-grid">
+      <div class="input-group"><label>RIMサポート</label><input type="number" id="in-rim" placeholder="9"></div>
+      <div class="input-group"><label>VSC正会員</label><input type="number" id="in-vsc" placeholder="13"></div>
+      <div class="input-group"><label>TAPサポート</label><input type="number" id="in-tap" placeholder="89"></div>
+      <div class="input-group"><label>サポート会員</label><input type="number" id="in-sup" placeholder="182"></div>
+      <div class="input-group"><label>VSC会員</label><input type="number" id="in-vscp" placeholder="223"></div>
+    </div>
+    <div class="section-label">SNSフォロワー</div>
+    <div class="input-grid">
+      <div class="input-group"><label>YouTube登録者</label><input type="number" id="in-yt" placeholder="44330"></div>
+      <div class="input-group"><label>Instagramフォロワー</label><input type="number" id="in-ig" placeholder="54027"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn-primary" onclick="saveData()">保存</button>
+      <button class="btn-danger" onclick="clearAll()">全データ削除</button>
+    </div>
+  </div>
+
+  <div class="input-card">
+    <div style="font-size:13px;font-weight:500;margin-bottom:8px;">データの移行</div>
+    <p class="note" style="margin-bottom:14px;">ローカルHTMLからGitHub Pagesへデータを移行する際に使用してください。エクスポート→別ブラウザでインポートの順で行います。</p>
+    <div class="btn-row">
+      <button class="btn-primary" onclick="exportData()">⬇ データをエクスポート</button>
+      <label class="btn-secondary" style="cursor:pointer;padding:9px 14px;font-size:12px;border:1px solid var(--border);border-radius:7px;color:var(--muted);">
+        ⬆ データをインポート
+        <input type="file" id="import-file" accept=".json" style="display:none;" onchange="importData(this)">
+      </label>
+    </div>
+    <p id="import-result" style="font-size:12px;color:var(--ok);margin-top:8px;display:none;"></p>
+  </div>
+
+  <!-- 過去データ一括入力 -->
+  <div class="input-card">
+    <div style="font-size:13px;font-weight:500;margin-bottom:4px;">過去データを1件追加</div>
+    <p class="note">TM・RMが記録されていない時期は0のままでOKです。日付を指定して1件ずつ追加できます。</p>
+    <div class="section-label">日付</div>
+    <div class="input-grid">
+      <div class="input-group"><label>日付</label><input type="date" id="past-date"></div>
+    </div>
+    <div class="section-label">フロントエンド</div>
+    <div class="input-grid">
+      <div class="input-group"><label>TM会員</label><input type="number" id="past-tm" placeholder="0"></div>
+      <div class="input-group"><label>RM会員</label><input type="number" id="past-rm" placeholder="0"></div>
+      <div class="input-group"><label>チャレンジ会員</label><input type="number" id="past-ch" placeholder="474"></div>
+    </div>
+    <div class="section-label">無料会員</div>
+    <div class="input-grid">
+      <div class="input-group"><label>無料会員</label><input type="number" id="past-free" placeholder="7234"></div>
+    </div>
+    <div class="section-label">バックエンド</div>
+    <div class="input-grid">
+      <div class="input-group"><label>RIMサポート</label><input type="number" id="past-rim" placeholder="0"></div>
+      <div class="input-group"><label>VSC正会員</label><input type="number" id="past-vsc" placeholder="321"></div>
+      <div class="input-group"><label>TAPサポート</label><input type="number" id="past-tap" placeholder="225"></div>
+      <div class="input-group"><label>サポート会員</label><input type="number" id="past-sup" placeholder="0"></div>
+      <div class="input-group"><label>VSC会員</label><input type="number" id="past-vscp" placeholder="0"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn-primary" onclick="savePast()">この日付で追加</button>
+    </div>
+  </div>
+
+  <!-- スプレッドシートから自動投入 -->
+  <div class="input-card">
+    <div style="font-size:13px;font-weight:500;margin-bottom:4px;">過去データを一括インポート</div>
+    <div class="past-data-banner">
+      <strong>スプレッドシートから読み取った過去データ（2023年12月〜2024年9月）</strong><br>
+      <span style="color:var(--muted);font-size:12px;">TM・RMが記録されていない期間は0として、チャレンジ会員・VSC正会員・TAPサポートを含む18件のデータが入ります。</span>
+    </div>
+    <div class="btn-row">
+      <button class="btn-primary" onclick="importPastData()">▼ 過去データを一括インポート</button>
+      <span style="font-size:12px;color:var(--muted);">※既存データの前に追加されます</span>
+    </div>
+  </div>
+</div>
+
+<script>
+const KEY='vsc-dash-v4';
+let currentPeriod=0;
+let miniChart=null,mainChart=null,diffChart=null;
+
+// スプレッドシートから読み取った過去データ
+const PAST_DATA=[
+  {date:"2023-12-06",tm:0,rm:0,ch:474,free:7234,rim:0,vsc:321,tap:225,sup:0,vscp:0,yt:0,ig:0},
+  {date:"2023-12-31",tm:0,rm:94,ch:493,free:7329,rim:0,vsc:315,tap:237,sup:0,vscp:0,yt:0,ig:0},
+  {date:"2024-01-10",tm:0,rm:0,ch:502,free:7340,rim:0,vsc:312,tap:239,sup:0,vscp:0,yt:0,ig:0},
+  {date:"2024-01-31",tm:0,rm:0,ch:504,free:7305,rim:0,vsc:308,tap:262,sup:0,vscp:0,yt:0,ig:0},
+  {date:"2024-02-10",tm:0,rm:0,ch:506,free:7295,rim:0,vsc:304,tap:259,sup:0,vscp:0,yt:0,ig:0},
+  {date:"2024-02-28",tm:0,rm:18,ch:512,free:7323,rim:0,vsc:301,tap:244,sup:0,vscp:0,yt:0,ig:0},
+  {date:"2024-03-01",tm:0,rm:0,ch:512,free:7326,rim:0,vsc:303,tap:242,sup:0,vscp:0,yt:0,ig:0},
+  {date:"2024-03-28",tm:0,rm:31,ch:524,free:7354,rim:0,vsc:299,tap:241,sup:0,vscp:0,yt:0,ig:0},
+  {date:"2024-04-12",tm:0,rm:0,ch:528,free:7386,rim:0,vsc:300,tap:239,sup:0,vscp:0,yt:0,ig:0},
+  {date:"2024-04-28",tm:0,rm:19,ch:538,free:7383,rim:0,vsc:297,tap:241,sup:0,vscp:0,yt:0,ig:0},
+  {date:"2024-05-01",tm:0,rm:0,ch:539,free:7388,rim:0,vsc:297,tap:242,sup:0,vscp:0,yt:0,ig:0},
+  {date:"2024-05-30",tm:0,rm:85,ch:554,free:7376,rim:0,vsc:293,tap:241,sup:0,vscp:0,yt:0,ig:0},
+  {date:"2024-06-30",tm:0,rm:119,ch:568,free:7495,rim:0,vsc:295,tap:236,sup:0,vscp:0,yt:0,ig:0},
+  {date:"2024-07-10",tm:0,rm:0,ch:618,free:7495,rim:0,vsc:297,tap:250,sup:0,vscp:0,yt:0,ig:0},
+  {date:"2024-07-26",tm:0,rm:0,ch:621,free:7533,rim:0,vsc:294,tap:255,sup:0,vscp:0,yt:0,ig:0},
+  {date:"2024-08-28",tm:0,rm:0,ch:624,free:7655,rim:0,vsc:293,tap:256,sup:0,vscp:0,yt:0,ig:0},
+  {date:"2024-09-01",tm:0,rm:0,ch:623,free:7653,rim:0,vsc:292,tap:254,sup:0,vscp:0,yt:0,ig:0},
+  {date:"2024-09-07",tm:0,rm:0,ch:626,free:7652,rim:0,vsc:290,tap:251,sup:0,vscp:0,yt:38738,ig:43461},
+  {date:"2024-09-10",tm:0,rm:0,ch:626,free:7652,rim:0,vsc:292,tap:249,sup:0,vscp:0,yt:0,ig:0},
+  {date:"2024-09-16",tm:0,rm:0,ch:627,free:7679,rim:0,vsc:292,tap:246,sup:0,vscp:0,yt:0,ig:0},
+  {date:"2024-09-20",tm:0,rm:0,ch:627,free:7659,rim:0,vsc:292,tap:245,sup:0,vscp:0,yt:38914,ig:45277},
+  {date:"2024-09-24",tm:0,rm:0,ch:627,free:7664,rim:0,vsc:292,tap:244,sup:0,vscp:0,yt:0,ig:0},
+  {date:"2024-09-27",tm:0,rm:0,ch:627,free:7670,rim:0,vsc:292,tap:243,sup:0,vscp:0,yt:39024,ig:45547},
+  {date:"2024-10-07",tm:0,rm:0,ch:626,free:7696,rim:0,vsc:292,tap:242,sup:0,vscp:0,yt:39187,ig:46030},
+  {date:"2024-10-18",tm:0,rm:0,ch:626,free:7711,rim:0,vsc:290,tap:239,sup:0,vscp:0,yt:39283,ig:46459},
+  {date:"2024-10-21",tm:0,rm:0,ch:626,free:7730,rim:0,vsc:286,tap:233,sup:0,vscp:0,yt:39313,ig:46543},
+  {date:"2024-10-30",tm:0,rm:0,ch:626,free:7748,rim:0,vsc:286,tap:235,sup:0,vscp:0,yt:39421,ig:46799},
+  {date:"2024-10-31",tm:0,rm:0,ch:626,free:7746,rim:0,vsc:286,tap:236,sup:0,vscp:0,yt:39425,ig:46814},
+  {date:"2024-11-05",tm:0,rm:0,ch:626,free:7754,rim:0,vsc:285,tap:236,sup:0,vscp:0,yt:39457,ig:46872},
+  {date:"2024-11-09",tm:0,rm:0,ch:626,free:7754,rim:0,vsc:285,tap:238,sup:0,vscp:0,yt:39485,ig:46950},
+  {date:"2024-12-15",tm:0,rm:0,ch:626,free:7777,rim:0,vsc:281,tap:238,sup:0,vscp:0,yt:39605,ig:47317},
+  {date:"2024-12-22",tm:0,rm:0,ch:626,free:7773,rim:0,vsc:280,tap:236,sup:0,vscp:0,yt:39622,ig:47362},
+  {date:"2024-12-28",tm:0,rm:0,ch:625,free:7773,rim:0,vsc:282,tap:243,sup:0,vscp:0,yt:39647,ig:47404},
+  {date:"2025-01-15",tm:0,rm:0,ch:624,free:7822,rim:0,vsc:278,tap:239,sup:0,vscp:0,yt:39670,ig:47506},
+  {date:"2025-01-28",tm:0,rm:0,ch:621,free:7840,rim:0,vsc:275,tap:234,sup:0,vscp:0,yt:39820,ig:47750},
+  {date:"2025-02-06",tm:0,rm:0,ch:666,free:7855,rim:0,vsc:276,tap:249,sup:0,vscp:0,yt:39853,ig:47838},
+  {date:"2025-02-20",tm:0,rm:0,ch:755,free:8001,rim:0,vsc:278,tap:274,sup:0,vscp:0,yt:39864,ig:47898},
+  {date:"2025-03-04",tm:0,rm:0,ch:751,free:8060,rim:0,vsc:275,tap:270,sup:0,vscp:0,yt:39891,ig:48023},
+  {date:"2025-03-17",tm:0,rm:0,ch:748,free:8079,rim:0,vsc:275,tap:256,sup:0,vscp:0,yt:39902,ig:48081},
+  {date:"2025-04-01",tm:0,rm:0,ch:748,free:8103,rim:0,vsc:270,tap:251,sup:0,vscp:0,yt:40105,ig:48316},
+  {date:"2025-05-07",tm:0,rm:253,ch:869,free:8065,rim:0,vsc:267,tap:244,sup:0,vscp:0,yt:40463,ig:48962},
+  {date:"2025-05-16",tm:0,rm:362,ch:888,free:8074,rim:0,vsc:268,tap:251,sup:0,vscp:0,yt:40684,ig:49312},
+  {date:"2025-05-18",tm:0,rm:363,ch:888,free:8084,rim:0,vsc:268,tap:252,sup:0,vscp:0,yt:40790,ig:49472},
+  {date:"2025-05-26",tm:0,rm:373,ch:887,free:8123,rim:0,vsc:269,tap:255,sup:0,vscp:0,yt:41088,ig:49870},
+  {date:"2025-06-01",tm:0,rm:376,ch:884,free:8150,rim:0,vsc:270,tap:250,sup:0,vscp:0,yt:41196,ig:50006},
+  {date:"2025-07-01",tm:0,rm:409,ch:883,free:8213,rim:0,vsc:270,tap:238,sup:0,vscp:0,yt:41552,ig:50397},
+  {date:"2025-07-21",tm:0,rm:421,ch:885,free:8248,rim:0,vsc:279,tap:240,sup:0,vscp:0,yt:41850,ig:50720},
+  {date:"2025-07-28",tm:0,rm:428,ch:889,free:8263,rim:0,vsc:279,tap:248,sup:0,vscp:0,yt:42038,ig:50908},
+  {date:"2025-08-08",tm:0,rm:432,ch:890,free:8296,rim:0,vsc:277,tap:240,sup:0,vscp:0,yt:42325,ig:51237},
+  {date:"2025-10-21",tm:0,rm:589,ch:910,free:8377,rim:0,vsc:272,tap:248,sup:0,vscp:0,yt:43629,ig:52669},
+  {date:"2025-12-01",tm:0,rm:591,ch:944,free:8402,rim:5,vsc:254,tap:248,sup:0,vscp:0,yt:43956,ig:53111},
+  {date:"2025-12-12",tm:0,rm:595,ch:965,free:8420,rim:5,vsc:251,tap:245,sup:0,vscp:0,yt:44017,ig:53389},
+  {date:"2026-01-21",tm:170,rm:601,ch:992,free:8421,rim:8,vsc:241,tap:253,sup:0,vscp:0,yt:44124,ig:53689},
+  {date:"2026-02-03",tm:239,rm:601,ch:1000,free:8418,rim:6,vsc:240,tap:273,sup:0,vscp:0,yt:44116,ig:53719},
+  {date:"2026-02-12",tm:251,rm:601,ch:1003,free:8405,rim:6,vsc:239,tap:279,sup:0,vscp:0,yt:44117,ig:53729},
+  {date:"2026-02-21",tm:259,rm:601,ch:1006,free:8410,rim:6,vsc:236,tap:277,sup:0,vscp:0,yt:44109,ig:53718},
+  {date:"2026-03-01",tm:266,rm:601,ch:1008,free:8410,rim:6,vsc:236,tap:272,sup:0,vscp:0,yt:44121,ig:53723},
+  {date:"2026-03-16",tm:283,rm:600,ch:1007,free:8391,rim:6,vsc:229,tap:268,sup:0,vscp:0,yt:44132,ig:53742},
+  {date:"2026-04-02",tm:299,rm:600,ch:1005,free:8379,rim:7,vsc:225,tap:261,sup:0,vscp:0,yt:44169,ig:53772},
+  {date:"2026-05-01",tm:392,rm:598,ch:1004,free:8392,rim:9,vsc:222,tap:277,sup:0,vscp:0,yt:44330,ig:54027},
+];
+
+function load(){try{return JSON.parse(localStorage.getItem(KEY)||'[]');}catch(e){return[];}}
+function save(d){localStorage.setItem(KEY,JSON.stringify(d));}
+function ft(r){return(r.tm||0)+(r.rm||0)+(r.ch||0);}
+function pt(r){return(r.rim||0)+(r.vsc||0)+(r.tap||0)+(r.sup||0)+(r.vscp||0);}
+function ds(v,p){if(p===null||p===undefined)return'—';const d=v-p;return(d>0?'+':'')+d;}
+function dc(v,p){if(p===null)return'flat';return v>p?'up':v<p?'down':'flat';}
+
+function diagnose(records,idx){
+  if(idx<1)return{s1:null,s2:null,s3:null};
+  const fd=ft(records[idx])-ft(records[idx-1]);
+  const pd=pt(records[idx])-pt(records[idx-1]);
+  let s1,s2,s3;
+  if(fd>0) s1={cls:'ok',icon:'✓ 正常',msg:'フロントが増加中。集客は機能しています。バックエンドの転換率を注視してください。'};
+  else if(fd===0) s1={cls:'warn',icon:'△ 注意',msg:'フロントが横ばいです。次の10日間で広告・SNS投稿を強化しましょう。'};
+  else s1={cls:'danger',icon:'✕ 危険',msg:'フロントが減少。即座に広告・SNS集客を再開してください。'};
+  if(fd>0){
+    if(pd>0) s2={cls:'ok',icon:'✓ 正常',msg:'フロント増加→バックエンドも増加。ファネルは正常です。'};
+    else if(pd===0) s2={cls:'warn',icon:'△ 注意',msg:'フロントは増えているのにバックエンドが横ばい。LPやセールスファネルを見直してください。'};
+    else s2={cls:'danger',icon:'✕ 要確認',msg:'フロント増加なのにバックエンドが減少。30日以内の退会が多い可能性があります。集客の質とLP内容を見直してください。'};
+  }else if(fd===0){
+    if(pd>=0) s2={cls:'warn',icon:'△ 注意',msg:'フロント停滞。新規流入なし・既存維持のみの状態です。早急に集客アクションが必要です。'};
+    else s2={cls:'danger',icon:'✕ 危険',msg:'フロント停滞＋バックエンド減少。コンテンツや会員サービスの品質を見直してください。'};
+  }else{
+    if(pd>=0) s2={cls:'warn',icon:'△ 注意',msg:'フロント減少中ですが、バックエンドはまだ維持。集客を早急に再開してください。'};
+    else s2={cls:'danger',icon:'✕ 危険',msg:'フロント減少＋バックエンド減少の二重悪化。集客の即再開＋退会原因の調査が最優先です。'};
+  }
+  if(pd>0) s3={cls:'ok',icon:'✓ 健全',msg:'バックエンドが純増。新規購入が退会者を上回っています。'};
+  else if(pd===0) s3={cls:'warn',icon:'△ 均衡',msg:'新規購入と退会がほぼ同数。30日無料後の継続率を高める施策を検討してください。'};
+  else{
+    if(fd>0) s3={cls:'warn',icon:'△ 注意',msg:'新規はいるが退会のほうが多い。30日無料期間後の離脱を確認してください。'};
+    else s3={cls:'danger',icon:'✕ 危険',msg:'新規流入なし＋退会進行中。サービス品質の抜本的な見直しが必要です。'};
+  }
+  return{s1,s2,s3};
+}
+
+function getFiltered(records){
+  if(currentPeriod===0)return records;
+  return records.slice(-currentPeriod);
+}
+
+function buildDatasets(records){
+  return[
+    {label:'フロントエンド',data:records.map(r=>ft(r)),borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,0.07)',fill:true,tension:.35,pointRadius:4,pointHoverRadius:7,pointBackgroundColor:'#3b82f6',borderWidth:2.5},
+    {label:'バックエンド',data:records.map(r=>pt(r)),borderColor:'#14b8a6',backgroundColor:'rgba(20,184,166,0.07)',fill:true,tension:.35,pointRadius:4,pointHoverRadius:7,pointBackgroundColor:'#14b8a6',borderDash:[6,3],borderWidth:2.5}
+  ];
+}
+
+const BASE_OPTS={
+  responsive:true,maintainAspectRatio:false,
+  interaction:{mode:'index',intersect:false},
+  plugins:{legend:{display:false},tooltip:{backgroundColor:'#1e2229',borderColor:'rgba(255,255,255,0.12)',borderWidth:1,titleColor:'#e8eaf0',bodyColor:'#9ca3af',titleFont:{family:'DM Mono',size:11},bodyFont:{family:'DM Mono',size:11},padding:12,callbacks:{label:ctx=>`${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString()}人`}}},
+  scales:{
+    x:{ticks:{color:'#6b7280',font:{family:'DM Mono',size:10},maxRotation:45,maxTicksLimit:12},grid:{color:'rgba(255,255,255,0.04)'}},
+    y:{ticks:{color:'#6b7280',font:{family:'DM Mono',size:10},callback:v=>v.toLocaleString()},grid:{color:'rgba(255,255,255,0.05)'},position:'right'}
+  }
+};
+
+function renderAll(){
+  const all=load();
+  document.getElementById('last-updated').textContent='最終更新: '+(all.length?all[all.length-1].date:'—');
+
+  if(all.length){
+    const last=all[all.length-1],prev=all.length>1?all[all.length-2]:null;
+    const cf=ft(last),cp=pt(last),fr=last.free||0;
+    const pf=prev?ft(prev):null,pp=prev?pt(prev):null,pfr=prev?(prev.free||0):null;
+    const fd=pf!==null?cf-pf:null,pd=pp!==null?cp-pp:null;
+    document.getElementById('m-front').textContent=cf.toLocaleString();
+    document.getElementById('m-paid').textContent=cp.toLocaleString();
+    document.getElementById('m-free').textContent=fr.toLocaleString();
+    const sd=(did,v,pv)=>{const el=document.getElementById(did);if(el){el.textContent=ds(v,pv);el.className='metric-diff '+dc(v,pv);}};
+    sd('d-front',cf,pf);sd('d-paid',cp,pp);sd('d-free',fr,pfr);
+    if(fd!==null){const el=document.getElementById('m-fdiff');el.textContent=(fd>0?'+':'')+fd;el.className='metric-value '+(fd>0?'c-ok':fd<0?'c-danger':'c-muted');}
+    if(pd!==null){const el=document.getElementById('m-pdiff');el.textContent=(pd>0?'+':'')+pd;el.className='metric-value '+(pd>0?'c-ok':pd<0?'c-danger':'c-muted');}
+    const yt=last.yt||0,ig=last.ig||0,pyt=prev?(prev.yt||0):null,pig=prev?(prev.ig||0):null;
+    const eyt=document.getElementById('m-yt');if(eyt)eyt.textContent=yt?yt.toLocaleString():'—';
+    const eig=document.getElementById('m-ig');if(eig)eig.textContent=ig?ig.toLocaleString():'—';
+    sd('d-yt',yt,pyt);sd('d-ig',ig,pig);
+    const diag=diagnose(all,all.length-1);
+    const steps=[diag.s1,diag.s2,diag.s3];
+    const titles=['フロントエンドの状態','ファネルの状態','バックエンドの健全性'];
+    document.getElementById('step-grid').innerHTML=steps.map((s,i)=>`<div class="step-card ${s?'s-'+s.cls:'s-none'}"><div class="step-no">Step ${i+1}</div><div class="step-title">${titles[i]}</div><div class="step-status ${s?'c-'+s.cls:'c-muted'}">${s?s.icon:'—'}</div><div class="step-action">${s?s.msg:'前回データと比較できません'}</div></div>`).join('');
+  }
+
+  const filtered=getFiltered(all);
+  const labels=filtered.map(r=>r.date);
+  const fdiffs=filtered.map((r,i)=>i===0?0:ft(r)-ft(filtered[i-1]));
+  const pdiffs=filtered.map((r,i)=>i===0?0:pt(r)-pt(filtered[i-1]));
+
+  if(miniChart)miniChart.destroy();
+  const mc=document.getElementById('mini-chart');
+  if(mc) miniChart=new Chart(mc,{type:'line',data:{labels,datasets:buildDatasets(filtered)},options:{...BASE_OPTS,scales:{...BASE_OPTS.scales,y:{...BASE_OPTS.scales.y,position:'left'}}}});
+
+  if(mainChart)mainChart.destroy();
+  const mc2=document.getElementById('main-chart');
+  if(mc2) mainChart=new Chart(mc2,{type:'line',data:{labels,datasets:buildDatasets(filtered)},options:BASE_OPTS});
+
+  // SNSチャート
+  const snsFiltered=getFiltered(all).filter(r=>r.yt||r.ig);
+  if(snsFiltered.length){
+    const snsLabels=snsFiltered.map(r=>r.date);
+    const ytData=snsFiltered.map(r=>r.yt||0);
+    const igData=snsFiltered.map(r=>r.ig||0);
+    const frontData=snsFiltered.map(r=>ft(r));
+    const paidData=snsFiltered.map(r=>pt(r));
+    const ytDiffs=snsFiltered.map((r,i)=>i===0?0:(r.yt||0)-(snsFiltered[i-1].yt||0));
+    const igDiffs=snsFiltered.map((r,i)=>i===0?0:(r.ig||0)-(snsFiltered[i-1].ig||0));
+    const sc=document.getElementById('sns-chart');
+    const sdc=document.getElementById('sns-diff-chart');
+    if(sc){
+      if(window.snsChart)window.snsChart.destroy();
+      window.snsChart=new Chart(sc,{type:'line',data:{labels:snsLabels,datasets:[
+        {label:'YouTube',data:ytData,borderColor:'#ff0000',backgroundColor:'rgba(255,0,0,0.05)',fill:true,tension:.35,pointRadius:3,borderWidth:2,yAxisID:'ySNS'},
+        {label:'Instagram',data:igData,borderColor:'#e1306c',backgroundColor:'rgba(225,48,108,0.05)',fill:true,tension:.35,pointRadius:3,borderWidth:2,yAxisID:'ySNS'},
+        {label:'フロント',data:frontData,borderColor:'#3b82f6',fill:false,tension:.35,pointRadius:3,borderWidth:1.5,borderDash:[5,3],yAxisID:'yMember'},
+        {label:'バックエンド',data:paidData,borderColor:'#14b8a6',fill:false,tension:.35,pointRadius:3,borderWidth:1.5,borderDash:[5,3],yAxisID:'yMember'}
+      ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+        plugins:{legend:{display:false},tooltip:{backgroundColor:'#1e2229',borderColor:'rgba(255,255,255,0.12)',borderWidth:1,titleColor:'#e8eaf0',bodyColor:'#9ca3af',titleFont:{family:'DM Mono',size:11},bodyFont:{family:'DM Mono',size:11},padding:12,callbacks:{label:ctx=>`${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString()}`}}},
+        scales:{
+          x:{ticks:{color:'#6b7280',font:{family:'DM Mono',size:10},maxTicksLimit:12},grid:{color:'rgba(255,255,255,0.04)'}},
+          ySNS:{type:'linear',position:'right',ticks:{color:'#ff0000',font:{size:10},callback:v=>v.toLocaleString()},grid:{color:'rgba(255,255,255,0.04)'},title:{display:true,text:'SNS',color:'#6b7280',font:{size:10}}},
+          yMember:{type:'linear',position:'left',ticks:{color:'#3b82f6',font:{size:10},callback:v=>v.toLocaleString()},grid:{display:false},title:{display:true,text:'会員数',color:'#6b7280',font:{size:10}}}
+        }}});
+    }
+    if(sdc){
+      if(window.snsDiffChart)window.snsDiffChart.destroy();
+      window.snsDiffChart=new Chart(sdc,{type:'bar',data:{labels:snsLabels,datasets:[
+        {label:'YT増減',data:ytDiffs,backgroundColor:ytDiffs.map(v=>v>=0?'rgba(255,0,0,0.7)':'rgba(255,100,100,0.5)'),borderRadius:3,barPercentage:.45},
+        {label:'IG増減',data:igDiffs,backgroundColor:igDiffs.map(v=>v>=0?'rgba(225,48,108,0.7)':'rgba(225,48,108,0.4)'),borderRadius:3,barPercentage:.45}
+      ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#6b7280',font:{size:9},maxTicksLimit:12},grid:{color:'rgba(255,255,255,0.03)'}},y:{ticks:{color:'#6b7280',font:{size:9},callback:v=>(v>0?'+':'')+v},grid:{color:'rgba(255,255,255,0.04)'}}}}});
+    }
+  }
+
+  if(diffChart)diffChart.destroy();
+  const dc2=document.getElementById('diff-chart');
+  if(dc2) diffChart=new Chart(dc2,{type:'bar',data:{labels,datasets:[
+    {label:'フロント増減',data:fdiffs,backgroundColor:fdiffs.map(v=>v>=0?'rgba(59,130,246,0.75)':'rgba(239,68,68,0.75)'),borderRadius:3,barPercentage:.45},
+    {label:'BE増減',data:pdiffs,backgroundColor:pdiffs.map(v=>v>=0?'rgba(20,184,166,0.75)':'rgba(245,158,11,0.75)'),borderRadius:3,barPercentage:.45}
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#6b7280',font:{size:9},maxTicksLimit:12},grid:{color:'rgba(255,255,255,0.03)'}},y:{ticks:{color:'#6b7280',font:{size:9},callback:v=>(v>0?'+':'')+v},grid:{color:'rgba(255,255,255,0.04)'}}}}});
+
+  // シートテーブル
+  const sb=document.getElementById('sheet-body');
+  const sc=document.getElementById('sheet-count');
+  if(sb){
+    if(sc) sc.textContent=`(${all.length}件)`;
+    sb.innerHTML=[...all].reverse().map((r,i,arr)=>{
+      const oi=all.length-1-i,pr=all[oi-1];
+      const rf=ft(r),rp=pt(r),prf=pr?ft(pr):null,prp=pr?pt(pr):null,prf2=pr?(pr.free||0):null;
+      const d=diagnose(all,oi);
+      const po=s=>s?`<span class="pill pill-${s.cls}">${s.icon}</span>`:'<span class="pill pill-none">—</span>';
+      const dsp=(v,p)=>{if(p===null)return'<span class="flat">—</span>';const d2=v-p;return`<span class="${d2>0?'up':d2<0?'down':'flat'}">${d2>0?'+':''}${d2}</span>`;};
+      return`<tr>
+        <td>${r.date}</td>
+        <td>${r.tm||0}</td><td>${r.rm||0}</td><td>${r.ch||0}</td>
+        <td style="color:var(--blue);font-weight:500;">${rf.toLocaleString()}</td><td>${dsp(rf,prf)}</td>
+        <td>${(r.free||0).toLocaleString()}</td><td>${dsp(r.free||0,prf2)}</td>
+        <td>${r.rim||0}</td><td>${r.vsc||0}</td><td>${r.tap||0}</td><td>${r.sup||0}</td><td>${r.vscp||0}</td>
+        <td style="color:var(--teal);font-weight:500;">${rp.toLocaleString()}</td><td>${dsp(rp,prp)}</td>
+        <td>${po(d.s1)}</td><td>${po(d.s2)}</td><td>${po(d.s3)}</td>
+      </tr>`;
+    }).join('');
+  }
+}
+
+function setPeriod(n,btn){
+  currentPeriod=n;
+  document.querySelectorAll('.period-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderAll();
+}
+
+function filterTable(q){
+  document.querySelectorAll('#sheet-body tr').forEach(tr=>{
+    tr.style.display=tr.cells[0]&&tr.cells[0].textContent.includes(q)?'':'none';
+  });
+}
+
+function switchTab(name,btn){
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('page-'+name).classList.add('active');
+  setTimeout(renderAll,50);
+}
+
+function startAutoFetch(){
+  const prompt=`管理画面（https://village-surf.jp/dl/admin/user_list.php）の左サイドバーから以下の会員数を読み取って、VSCダッシュボードの「データ入力」タブの各フィールドに入力して保存ボタンを押してください。
+読み取る項目：TM会員・RM会員・チャレンジ会員（パドル）・無料会員・RIMサポート会員・VSC正会員・TAPサポート会員・サポート会員・VSC会員`;
+  navigator.clipboard.writeText(prompt).then(()=>{
+    ['auto-result','auto-result2'].forEach(id=>{const r=document.getElementById(id);if(r){r.className='auto-result show';r.innerHTML='<strong style="color:var(--ok);">✓ Claudeへの指示をコピーしました。</strong>　Claudeのチャットに貼り付け（Ctrl+V）して送信してください。';}});
+    window.open('https://village-surf.jp/dl/admin/user_list.php','_blank');
+  });
+}
+
+function importPastData(){
+  const records=load();
+  const existingDates=new Set(records.map(r=>r.date));
+  const toAdd=PAST_DATA.filter(r=>!existingDates.has(r.date));
+  if(toAdd.length===0){alert('過去データはすでにすべてインポート済みです。');return;}
+  const merged=[...toAdd,...records].sort((a,b)=>a.date.localeCompare(b.date));
+  save(merged);
+  renderAll();
+  alert(`${toAdd.length}件の過去データをインポートしました！`);
+}
+
+function savePast(){
+  const date=document.getElementById('past-date').value;
+  if(!date){alert('日付を入力してください');return;}
+  const g=id=>parseInt(document.getElementById(id).value)||0;
+  const records=load();
+  const newRec={date,tm:g('past-tm'),rm:g('past-rm'),ch:g('past-ch'),free:g('past-free'),rim:g('past-rim'),vsc:g('past-vsc'),tap:g('past-tap'),sup:g('past-sup'),vscp:g('past-vscp')};
+  const idx=records.findIndex(r=>r.date===date);
+  if(idx>=0){if(!confirm(`${date}のデータはすでに存在します。上書きしますか？`))return;records[idx]=newRec;}
+  else{records.push(newRec);records.sort((a,b)=>a.date.localeCompare(b.date));}
+  save(records);
+  ['past-date','past-tm','past-rm','past-ch','past-free','past-rim','past-vsc','past-tap','past-sup','past-vscp'].forEach(id=>document.getElementById(id).value='');
+  renderAll();
+  alert(`${date}のデータを保存しました！`);
+}
+
+function saveData(){
+  const g=id=>parseInt(document.getElementById(id).value)||0;
+  const records=load();
+  const today=new Date().toISOString().slice(0,10);
+  const idx=records.findIndex(r=>r.date===today);
+  const newRec={date:today,tm:g('in-tm'),rm:g('in-rm'),ch:g('in-ch'),free:g('in-free'),rim:g('in-rim'),vsc:g('in-vsc'),tap:g('in-tap'),sup:g('in-sup'),vscp:g('in-vscp'),yt:g('in-yt'),ig:g('in-ig')};
+  if(idx>=0){if(!confirm('今日のデータはすでに存在します。上書きしますか？'))return;records[idx]=newRec;}
+  else records.push(newRec);
+  save(records);
+  ['in-tm','in-rm','in-ch','in-free','in-rim','in-vsc','in-tap','in-sup','in-vscp'].forEach(id=>document.getElementById(id).value='');
+  renderAll();
+  switchTab('dashboard',document.querySelector('.tab'));
+}
+
+window.autoSave=function(data){
+  const records=load();
+  const today=new Date().toISOString().slice(0,10);
+  const idx=records.findIndex(r=>r.date===today);
+  if(idx>=0)records[idx]={date:today,...data};
+  else records.push({date:today,...data});
+  save(records);
+  renderAll();
+  ['auto-result','auto-result2'].forEach(id=>{const r=document.getElementById(id);if(r){r.className='auto-result show';r.innerHTML=`<strong style="color:var(--ok);">✓ ${today} のデータを自動保存しました</strong>`;}});
+  window.scrollTo({top:0,behavior:'smooth'});
+};
+
+function clearAll(){if(confirm('全データを削除しますか？')){localStorage.removeItem(KEY);renderAll();}}
+
+function exportData(){
+  const records=load();
+  if(!records.length){alert('エクスポートするデータがありません');return;}
+  const blob=new Blob([JSON.stringify(records,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='vsc_data_'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();
+}
+
+function importData(input){
+  const file=input.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const data=JSON.parse(e.target.result);
+      if(!Array.isArray(data))throw new Error();
+      const existing=load();
+      const existingDates=new Set(existing.map(r=>r.date));
+      const toAdd=data.filter(r=>!existingDates.has(r.date));
+      const merged=[...existing,...toAdd].sort((a,b)=>a.date.localeCompare(b.date));
+      save(merged);
+      renderAll();
+      const result=document.getElementById('import-result');
+      result.style.display='block';
+      result.textContent='✓ '+merged.length+'件のデータをインポートしました（'+toAdd.length+'件追加）';
+    }catch(e){
+      alert('ファイルの読み込みに失敗しました。正しいJSONファイルを選択してください。');
+    }
+  };
+  reader.readAsText(file);
+  input.value='';
+}
+
+renderAll();
+</script>
+</body>
+</html>
