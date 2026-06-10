@@ -456,8 +456,8 @@ function renderAll(){
     if(fd!==null){const el=document.getElementById('m-fdiff');el.textContent=(fd>0?'+':'')+fd;el.className='metric-value '+(fd>0?'c-ok':fd<0?'c-danger':'c-muted');}
     if(pd!==null){const el=document.getElementById('m-pdiff');el.textContent=(pd>0?'+':'')+pd;el.className='metric-value '+(pd>0?'c-ok':pd<0?'c-danger':'c-muted');}
     const yt=last.yt||0,ig=last.ig||0,pyt=prev?(prev.yt||0):null,pig=prev?(prev.ig||0):null;
-    document.getElementById('m-yt').textContent=yt?yt.toLocaleString():'—';
-    document.getElementById('m-ig').textContent=ig?ig.toLocaleString():'—';
+    const eyt=document.getElementById('m-yt');if(eyt)eyt.textContent=yt?yt.toLocaleString():'—';
+    const eig=document.getElementById('m-ig');if(eig)eig.textContent=ig?ig.toLocaleString():'—';
     sd('d-yt',yt,pyt);sd('d-ig',ig,pig);
     const diag=diagnose(all,all.length-1);
     const steps=[diag.s1,diag.s2,diag.s3];
