@@ -256,6 +256,24 @@ tbody td:first-child{text-align:left;color:var(--muted);font-size:11px;}
   </div>
 
   <div class="input-card">
+    <div style="font-size:13px;font-weight:500;margin-bottom:8px;">SNSフォロワーだけを更新</div>
+    <p class="note" style="margin-bottom:14px;">会員数とは別にSNSフォロワーだけを記録・更新できます。既存の会員数データはそのまま保持されます。</p>
+    <div class="section-label">日付（空欄の場合は今日）</div>
+    <div class="input-grid">
+      <div class="input-group"><label>日付</label><input type="date" id="sns-date"></div>
+    </div>
+    <div class="section-label">SNSフォロワー</div>
+    <div class="input-grid">
+      <div class="input-group"><label>YouTube登録者</label><input type="number" id="sns-yt" placeholder="44330"></div>
+      <div class="input-group"><label>Instagramフォロワー</label><input type="number" id="sns-ig" placeholder="54027"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn-primary" onclick="saveSNSOnly()">SNSフォロワーだけ保存</button>
+    </div>
+    <p id="sns-save-result" style="font-size:12px;color:var(--ok);margin-top:8px;display:none;"></p>
+  </div>
+
+  <div class="input-card">
     <div style="font-size:13px;font-weight:500;margin-bottom:8px;">データの移行</div>
     <p class="note" style="margin-bottom:14px;">ローカルHTMLからGitHub Pagesへデータを移行する際に使用してください。エクスポート→別ブラウザでインポートの順で行います。</p>
     <div class="btn-row">
@@ -628,6 +646,34 @@ window.autoSave=function(data){
 };
 
 function clearAll(){if(confirm('全データを削除しますか？')){localStorage.removeItem(KEY);renderAll();}}
+
+function saveSNSOnly(){
+  const dateInput=document.getElementById('sns-date').value;
+  const date=dateInput||new Date().toISOString().slice(0,10);
+  const yt=parseInt(document.getElementById('sns-yt').value)||0;
+  const ig=parseInt(document.getElementById('sns-ig').value)||0;
+  if(!yt&&!ig){alert('YouTube またはInstagramの数値を入力してください');return;}
+  const records=load();
+  const idx=records.findIndex(r=>r.date===date);
+  if(idx>=0){
+    // 既存レコードのSNSだけ更新
+    records[idx].yt=yt||records[idx].yt||0;
+    records[idx].ig=ig||records[idx].ig||0;
+  } else {
+    // 新しいレコードを追加（会員数は直前のデータを引き継ぐ）
+    const prev=records.length?records[records.length-1]:{};
+    records.push({date,tm:prev.tm||0,rm:prev.rm||0,ch:prev.ch||0,free:prev.free||0,rim:prev.rim||0,vsc:prev.vsc||0,tap:prev.tap||0,sup:prev.sup||0,vscp:prev.vscp||0,yt,ig});
+    records.sort((a,b)=>a.date.localeCompare(b.date));
+  }
+  save(records);
+  renderAll();
+  document.getElementById('sns-yt').value='';
+  document.getElementById('sns-ig').value='';
+  document.getElementById('sns-date').value='';
+  const r=document.getElementById('sns-save-result');
+  r.style.display='block';
+  r.textContent='✓ '+date+' のSNSフォロワーを保存しました';
+}
 
 function exportData(){
   const records=load();
