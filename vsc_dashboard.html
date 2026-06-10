@@ -105,6 +105,7 @@ tbody td:first-child{text-align:left;color:var(--muted);font-size:11px;}
   <button class="tab" onclick="switchTab('chart',this)">チャート</button>
   <button class="tab" onclick="switchTab('sheet',this)">データ一覧</button>
   <button class="tab" onclick="switchTab('input',this)">データ入力</button>
+  <button class="tab" onclick="switchTab('sns',this)">SNS比較</button>
 </div>
 
 <!-- ダッシュボード -->
@@ -187,6 +188,33 @@ tbody td:first-child{text-align:left;color:var(--muted);font-size:11px;}
   </div>
 </div>
 
+<!-- SNS比較 -->
+<div class="page" id="page-sns">
+  <div class="chart-section">
+    <div class="chart-top">
+      <div class="chart-title-area"><h2>SNS vs 会員数 比較チャート</h2><p>SNSフォロワーとフロント・バックエンドの相関</p></div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
+        <div class="period-btns">
+          <button class="period-btn" onclick="setPeriod(6,this)">6件</button>
+          <button class="period-btn" onclick="setPeriod(12,this)">12件</button>
+          <button class="period-btn active" onclick="setPeriod(0,this)">全期間</button>
+        </div>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-line" style="background:#ff0000;"></div>YouTube</div>
+          <div class="legend-item"><div class="legend-line" style="background:#e1306c;"></div>Instagram</div>
+          <div class="legend-item"><div class="legend-line" style="background:var(--blue);border-top:2px dashed var(--blue);height:0;width:16px;"></div>フロント</div>
+          <div class="legend-item"><div class="legend-line" style="background:var(--teal);border-top:2px dashed var(--teal);height:0;width:16px;"></div>バックエンド</div>
+        </div>
+      </div>
+    </div>
+    <div class="chart-wrap-main"><canvas id="sns-chart" role="img" aria-label="SNS比較チャート">SNS比較グラフ</canvas></div>
+    <div class="chart-wrap-sub">
+      <div style="font-size:10px;color:var(--muted);margin-bottom:6px;font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.08em;">SNS増減（YouTube・Instagram）</div>
+      <div style="position:relative;height:100px;"><canvas id="sns-diff-chart" role="img" aria-label="SNS増減グラフ">SNS増減グラフ</canvas></div>
+    </div>
+  </div>
+</div>
+
 <!-- データ入力 -->
 <div class="page" id="page-input">
   <div class="auto-banner">
@@ -216,10 +244,28 @@ tbody td:first-child{text-align:left;color:var(--muted);font-size:11px;}
       <div class="input-group"><label>サポート会員</label><input type="number" id="in-sup" placeholder="182"></div>
       <div class="input-group"><label>VSC会員</label><input type="number" id="in-vscp" placeholder="223"></div>
     </div>
+    <div class="section-label">SNSフォロワー</div>
+    <div class="input-grid">
+      <div class="input-group"><label>YouTube登録者</label><input type="number" id="in-yt" placeholder="44330"></div>
+      <div class="input-group"><label>Instagramフォロワー</label><input type="number" id="in-ig" placeholder="54027"></div>
+    </div>
     <div class="btn-row">
       <button class="btn-primary" onclick="saveData()">保存</button>
       <button class="btn-danger" onclick="clearAll()">全データ削除</button>
     </div>
+  </div>
+
+  <div class="input-card">
+    <div style="font-size:13px;font-weight:500;margin-bottom:8px;">データの移行</div>
+    <p class="note" style="margin-bottom:14px;">ローカルHTMLからGitHub Pagesへデータを移行する際に使用してください。エクスポート→別ブラウザでインポートの順で行います。</p>
+    <div class="btn-row">
+      <button class="btn-primary" onclick="exportData()">⬇ データをエクスポート</button>
+      <label class="btn-secondary" style="cursor:pointer;padding:9px 14px;font-size:12px;border:1px solid var(--border);border-radius:7px;color:var(--muted);">
+        ⬆ データをインポート
+        <input type="file" id="import-file" accept=".json" style="display:none;" onchange="importData(this)">
+      </label>
+    </div>
+    <p id="import-result" style="font-size:12px;color:var(--ok);margin-top:8px;display:none;"></p>
   </div>
 
   <!-- 過去データ一括入力 -->
@@ -274,66 +320,66 @@ let miniChart=null,mainChart=null,diffChart=null;
 
 // スプレッドシートから読み取った過去データ
 const PAST_DATA=[
-  {date:"2023-12-06",tm:0,rm:0,ch:474,free:7234,rim:0,vsc:321,tap:225,sup:0,vscp:0},
-  {date:"2023-12-31",tm:0,rm:94,ch:493,free:7329,rim:0,vsc:315,tap:237,sup:0,vscp:0},
-  {date:"2024-01-10",tm:0,rm:0,ch:502,free:7340,rim:0,vsc:312,tap:239,sup:0,vscp:0},
-  {date:"2024-01-31",tm:0,rm:0,ch:504,free:7305,rim:0,vsc:308,tap:262,sup:0,vscp:0},
-  {date:"2024-02-10",tm:0,rm:0,ch:506,free:7295,rim:0,vsc:304,tap:259,sup:0,vscp:0},
-  {date:"2024-02-28",tm:0,rm:18,ch:512,free:7323,rim:0,vsc:301,tap:244,sup:0,vscp:0},
-  {date:"2024-03-01",tm:0,rm:0,ch:512,free:7326,rim:0,vsc:303,tap:242,sup:0,vscp:0},
-  {date:"2024-03-28",tm:0,rm:31,ch:524,free:7354,rim:0,vsc:299,tap:241,sup:0,vscp:0},
-  {date:"2024-04-12",tm:0,rm:0,ch:528,free:7386,rim:0,vsc:300,tap:239,sup:0,vscp:0},
-  {date:"2024-04-28",tm:0,rm:19,ch:538,free:7383,rim:0,vsc:297,tap:241,sup:0,vscp:0},
-  {date:"2024-05-01",tm:0,rm:0,ch:539,free:7388,rim:0,vsc:297,tap:242,sup:0,vscp:0},
-  {date:"2024-05-30",tm:0,rm:85,ch:554,free:7376,rim:0,vsc:293,tap:241,sup:0,vscp:0},
-  {date:"2024-06-30",tm:0,rm:119,ch:568,free:7495,rim:0,vsc:295,tap:236,sup:0,vscp:0},
-  {date:"2024-07-10",tm:0,rm:0,ch:618,free:7495,rim:0,vsc:297,tap:250,sup:0,vscp:0},
-  {date:"2024-07-26",tm:0,rm:0,ch:621,free:7533,rim:0,vsc:294,tap:255,sup:0,vscp:0},
-  {date:"2024-08-28",tm:0,rm:0,ch:624,free:7655,rim:0,vsc:293,tap:256,sup:0,vscp:0},
-  {date:"2024-09-01",tm:0,rm:0,ch:623,free:7653,rim:0,vsc:292,tap:254,sup:0,vscp:0},
-  {date:"2024-09-07",tm:0,rm:0,ch:626,free:7652,rim:0,vsc:290,tap:251,sup:0,vscp:0},
-  {date:"2024-09-10",tm:0,rm:0,ch:626,free:7652,rim:0,vsc:292,tap:249,sup:0,vscp:0},
-  {date:"2024-09-16",tm:0,rm:0,ch:627,free:7679,rim:0,vsc:292,tap:246,sup:0,vscp:0},
-  {date:"2024-09-20",tm:0,rm:0,ch:627,free:7659,rim:0,vsc:292,tap:245,sup:0,vscp:0},
-  {date:"2024-09-24",tm:0,rm:0,ch:627,free:7664,rim:0,vsc:292,tap:244,sup:0,vscp:0},
-  {date:"2024-09-27",tm:0,rm:0,ch:627,free:7670,rim:0,vsc:292,tap:243,sup:0,vscp:0},
-  {date:"2024-10-07",tm:0,rm:0,ch:626,free:7696,rim:0,vsc:292,tap:242,sup:0,vscp:0},
-  {date:"2024-10-18",tm:0,rm:0,ch:626,free:7711,rim:0,vsc:290,tap:239,sup:0,vscp:0},
-  {date:"2024-10-21",tm:0,rm:0,ch:626,free:7730,rim:0,vsc:286,tap:233,sup:0,vscp:0},
-  {date:"2024-10-30",tm:0,rm:0,ch:626,free:7748,rim:0,vsc:286,tap:235,sup:0,vscp:0},
-  {date:"2024-10-31",tm:0,rm:0,ch:626,free:7746,rim:0,vsc:286,tap:236,sup:0,vscp:0},
-  {date:"2024-11-05",tm:0,rm:0,ch:626,free:7754,rim:0,vsc:285,tap:236,sup:0,vscp:0},
-  {date:"2024-11-09",tm:0,rm:0,ch:626,free:7754,rim:0,vsc:285,tap:238,sup:0,vscp:0},
-  {date:"2024-12-15",tm:0,rm:0,ch:626,free:7777,rim:0,vsc:281,tap:238,sup:0,vscp:0},
-  {date:"2024-12-22",tm:0,rm:0,ch:626,free:7773,rim:0,vsc:280,tap:236,sup:0,vscp:0},
-  {date:"2024-12-28",tm:0,rm:0,ch:625,free:7773,rim:0,vsc:282,tap:243,sup:0,vscp:0},
-  {date:"2025-01-15",tm:0,rm:0,ch:624,free:7822,rim:0,vsc:278,tap:239,sup:0,vscp:0},
-  {date:"2025-01-28",tm:0,rm:0,ch:621,free:7840,rim:0,vsc:275,tap:234,sup:0,vscp:0},
-  {date:"2025-02-06",tm:0,rm:0,ch:666,free:7855,rim:0,vsc:276,tap:249,sup:0,vscp:0},
-  {date:"2025-02-20",tm:0,rm:0,ch:755,free:8001,rim:0,vsc:278,tap:274,sup:0,vscp:0},
-  {date:"2025-03-04",tm:0,rm:0,ch:751,free:8060,rim:0,vsc:275,tap:270,sup:0,vscp:0},
-  {date:"2025-03-17",tm:0,rm:0,ch:748,free:8079,rim:0,vsc:275,tap:256,sup:0,vscp:0},
-  {date:"2025-04-01",tm:0,rm:0,ch:748,free:8103,rim:0,vsc:270,tap:251,sup:0,vscp:0},
-  {date:"2025-05-07",tm:0,rm:253,ch:869,free:8065,rim:0,vsc:267,tap:244,sup:0,vscp:0},
-  {date:"2025-05-16",tm:0,rm:362,ch:888,free:8074,rim:0,vsc:268,tap:251,sup:0,vscp:0},
-  {date:"2025-05-18",tm:0,rm:363,ch:888,free:8084,rim:0,vsc:268,tap:252,sup:0,vscp:0},
-  {date:"2025-05-26",tm:0,rm:373,ch:887,free:8123,rim:0,vsc:269,tap:255,sup:0,vscp:0},
-  {date:"2025-06-01",tm:0,rm:376,ch:884,free:8150,rim:0,vsc:270,tap:250,sup:0,vscp:0},
-  {date:"2025-07-01",tm:0,rm:409,ch:883,free:8213,rim:0,vsc:270,tap:238,sup:0,vscp:0},
-  {date:"2025-07-21",tm:0,rm:421,ch:885,free:8248,rim:0,vsc:279,tap:240,sup:0,vscp:0},
-  {date:"2025-07-28",tm:0,rm:428,ch:889,free:8263,rim:0,vsc:279,tap:248,sup:0,vscp:0},
-  {date:"2025-08-08",tm:0,rm:432,ch:890,free:8296,rim:0,vsc:277,tap:240,sup:0,vscp:0},
-  {date:"2025-10-21",tm:0,rm:589,ch:910,free:8377,rim:0,vsc:272,tap:248,sup:0,vscp:0},
-  {date:"2025-12-01",tm:0,rm:591,ch:944,free:8402,rim:5,vsc:254,tap:248,sup:0,vscp:0},
-  {date:"2025-12-12",tm:0,rm:595,ch:965,free:8420,rim:5,vsc:251,tap:245,sup:0,vscp:0},
-  {date:"2026-01-21",tm:170,rm:601,ch:992,free:8421,rim:8,vsc:241,tap:253,sup:0,vscp:0},
-  {date:"2026-02-03",tm:239,rm:601,ch:1000,free:8418,rim:6,vsc:240,tap:273,sup:0,vscp:0},
-  {date:"2026-02-12",tm:251,rm:601,ch:1003,free:8405,rim:6,vsc:239,tap:279,sup:0,vscp:0},
-  {date:"2026-02-21",tm:259,rm:601,ch:1006,free:8410,rim:6,vsc:236,tap:277,sup:0,vscp:0},
-  {date:"2026-03-01",tm:266,rm:601,ch:1008,free:8410,rim:6,vsc:236,tap:272,sup:0,vscp:0},
-  {date:"2026-03-16",tm:283,rm:600,ch:1007,free:8391,rim:6,vsc:229,tap:268,sup:0,vscp:0},
-  {date:"2026-04-02",tm:299,rm:600,ch:1005,free:8379,rim:7,vsc:225,tap:261,sup:0,vscp:0},
-  {date:"2026-05-01",tm:392,rm:598,ch:1004,free:8392,rim:9,vsc:222,tap:277,sup:0,vscp:0},
+  {date:"2023-12-06",tm:0,rm:0,ch:474,free:7234,rim:0,vsc:321,tap:225,sup:0,vscp:0,yt:0,ig:0},
+  {date:"2023-12-31",tm:0,rm:94,ch:493,free:7329,rim:0,vsc:315,tap:237,sup:0,vscp:0,yt:0,ig:0},
+  {date:"2024-01-10",tm:0,rm:0,ch:502,free:7340,rim:0,vsc:312,tap:239,sup:0,vscp:0,yt:0,ig:0},
+  {date:"2024-01-31",tm:0,rm:0,ch:504,free:7305,rim:0,vsc:308,tap:262,sup:0,vscp:0,yt:0,ig:0},
+  {date:"2024-02-10",tm:0,rm:0,ch:506,free:7295,rim:0,vsc:304,tap:259,sup:0,vscp:0,yt:0,ig:0},
+  {date:"2024-02-28",tm:0,rm:18,ch:512,free:7323,rim:0,vsc:301,tap:244,sup:0,vscp:0,yt:0,ig:0},
+  {date:"2024-03-01",tm:0,rm:0,ch:512,free:7326,rim:0,vsc:303,tap:242,sup:0,vscp:0,yt:0,ig:0},
+  {date:"2024-03-28",tm:0,rm:31,ch:524,free:7354,rim:0,vsc:299,tap:241,sup:0,vscp:0,yt:0,ig:0},
+  {date:"2024-04-12",tm:0,rm:0,ch:528,free:7386,rim:0,vsc:300,tap:239,sup:0,vscp:0,yt:0,ig:0},
+  {date:"2024-04-28",tm:0,rm:19,ch:538,free:7383,rim:0,vsc:297,tap:241,sup:0,vscp:0,yt:0,ig:0},
+  {date:"2024-05-01",tm:0,rm:0,ch:539,free:7388,rim:0,vsc:297,tap:242,sup:0,vscp:0,yt:0,ig:0},
+  {date:"2024-05-30",tm:0,rm:85,ch:554,free:7376,rim:0,vsc:293,tap:241,sup:0,vscp:0,yt:0,ig:0},
+  {date:"2024-06-30",tm:0,rm:119,ch:568,free:7495,rim:0,vsc:295,tap:236,sup:0,vscp:0,yt:0,ig:0},
+  {date:"2024-07-10",tm:0,rm:0,ch:618,free:7495,rim:0,vsc:297,tap:250,sup:0,vscp:0,yt:0,ig:0},
+  {date:"2024-07-26",tm:0,rm:0,ch:621,free:7533,rim:0,vsc:294,tap:255,sup:0,vscp:0,yt:0,ig:0},
+  {date:"2024-08-28",tm:0,rm:0,ch:624,free:7655,rim:0,vsc:293,tap:256,sup:0,vscp:0,yt:0,ig:0},
+  {date:"2024-09-01",tm:0,rm:0,ch:623,free:7653,rim:0,vsc:292,tap:254,sup:0,vscp:0,yt:0,ig:0},
+  {date:"2024-09-07",tm:0,rm:0,ch:626,free:7652,rim:0,vsc:290,tap:251,sup:0,vscp:0,yt:38738,ig:43461},
+  {date:"2024-09-10",tm:0,rm:0,ch:626,free:7652,rim:0,vsc:292,tap:249,sup:0,vscp:0,yt:0,ig:0},
+  {date:"2024-09-16",tm:0,rm:0,ch:627,free:7679,rim:0,vsc:292,tap:246,sup:0,vscp:0,yt:0,ig:0},
+  {date:"2024-09-20",tm:0,rm:0,ch:627,free:7659,rim:0,vsc:292,tap:245,sup:0,vscp:0,yt:38914,ig:45277},
+  {date:"2024-09-24",tm:0,rm:0,ch:627,free:7664,rim:0,vsc:292,tap:244,sup:0,vscp:0,yt:0,ig:0},
+  {date:"2024-09-27",tm:0,rm:0,ch:627,free:7670,rim:0,vsc:292,tap:243,sup:0,vscp:0,yt:39024,ig:45547},
+  {date:"2024-10-07",tm:0,rm:0,ch:626,free:7696,rim:0,vsc:292,tap:242,sup:0,vscp:0,yt:39187,ig:46030},
+  {date:"2024-10-18",tm:0,rm:0,ch:626,free:7711,rim:0,vsc:290,tap:239,sup:0,vscp:0,yt:39283,ig:46459},
+  {date:"2024-10-21",tm:0,rm:0,ch:626,free:7730,rim:0,vsc:286,tap:233,sup:0,vscp:0,yt:39313,ig:46543},
+  {date:"2024-10-30",tm:0,rm:0,ch:626,free:7748,rim:0,vsc:286,tap:235,sup:0,vscp:0,yt:39421,ig:46799},
+  {date:"2024-10-31",tm:0,rm:0,ch:626,free:7746,rim:0,vsc:286,tap:236,sup:0,vscp:0,yt:39425,ig:46814},
+  {date:"2024-11-05",tm:0,rm:0,ch:626,free:7754,rim:0,vsc:285,tap:236,sup:0,vscp:0,yt:39457,ig:46872},
+  {date:"2024-11-09",tm:0,rm:0,ch:626,free:7754,rim:0,vsc:285,tap:238,sup:0,vscp:0,yt:39485,ig:46950},
+  {date:"2024-12-15",tm:0,rm:0,ch:626,free:7777,rim:0,vsc:281,tap:238,sup:0,vscp:0,yt:39605,ig:47317},
+  {date:"2024-12-22",tm:0,rm:0,ch:626,free:7773,rim:0,vsc:280,tap:236,sup:0,vscp:0,yt:39622,ig:47362},
+  {date:"2024-12-28",tm:0,rm:0,ch:625,free:7773,rim:0,vsc:282,tap:243,sup:0,vscp:0,yt:39647,ig:47404},
+  {date:"2025-01-15",tm:0,rm:0,ch:624,free:7822,rim:0,vsc:278,tap:239,sup:0,vscp:0,yt:39670,ig:47506},
+  {date:"2025-01-28",tm:0,rm:0,ch:621,free:7840,rim:0,vsc:275,tap:234,sup:0,vscp:0,yt:39820,ig:47750},
+  {date:"2025-02-06",tm:0,rm:0,ch:666,free:7855,rim:0,vsc:276,tap:249,sup:0,vscp:0,yt:39853,ig:47838},
+  {date:"2025-02-20",tm:0,rm:0,ch:755,free:8001,rim:0,vsc:278,tap:274,sup:0,vscp:0,yt:39864,ig:47898},
+  {date:"2025-03-04",tm:0,rm:0,ch:751,free:8060,rim:0,vsc:275,tap:270,sup:0,vscp:0,yt:39891,ig:48023},
+  {date:"2025-03-17",tm:0,rm:0,ch:748,free:8079,rim:0,vsc:275,tap:256,sup:0,vscp:0,yt:39902,ig:48081},
+  {date:"2025-04-01",tm:0,rm:0,ch:748,free:8103,rim:0,vsc:270,tap:251,sup:0,vscp:0,yt:40105,ig:48316},
+  {date:"2025-05-07",tm:0,rm:253,ch:869,free:8065,rim:0,vsc:267,tap:244,sup:0,vscp:0,yt:40463,ig:48962},
+  {date:"2025-05-16",tm:0,rm:362,ch:888,free:8074,rim:0,vsc:268,tap:251,sup:0,vscp:0,yt:40684,ig:49312},
+  {date:"2025-05-18",tm:0,rm:363,ch:888,free:8084,rim:0,vsc:268,tap:252,sup:0,vscp:0,yt:40790,ig:49472},
+  {date:"2025-05-26",tm:0,rm:373,ch:887,free:8123,rim:0,vsc:269,tap:255,sup:0,vscp:0,yt:41088,ig:49870},
+  {date:"2025-06-01",tm:0,rm:376,ch:884,free:8150,rim:0,vsc:270,tap:250,sup:0,vscp:0,yt:41196,ig:50006},
+  {date:"2025-07-01",tm:0,rm:409,ch:883,free:8213,rim:0,vsc:270,tap:238,sup:0,vscp:0,yt:41552,ig:50397},
+  {date:"2025-07-21",tm:0,rm:421,ch:885,free:8248,rim:0,vsc:279,tap:240,sup:0,vscp:0,yt:41850,ig:50720},
+  {date:"2025-07-28",tm:0,rm:428,ch:889,free:8263,rim:0,vsc:279,tap:248,sup:0,vscp:0,yt:42038,ig:50908},
+  {date:"2025-08-08",tm:0,rm:432,ch:890,free:8296,rim:0,vsc:277,tap:240,sup:0,vscp:0,yt:42325,ig:51237},
+  {date:"2025-10-21",tm:0,rm:589,ch:910,free:8377,rim:0,vsc:272,tap:248,sup:0,vscp:0,yt:43629,ig:52669},
+  {date:"2025-12-01",tm:0,rm:591,ch:944,free:8402,rim:5,vsc:254,tap:248,sup:0,vscp:0,yt:43956,ig:53111},
+  {date:"2025-12-12",tm:0,rm:595,ch:965,free:8420,rim:5,vsc:251,tap:245,sup:0,vscp:0,yt:44017,ig:53389},
+  {date:"2026-01-21",tm:170,rm:601,ch:992,free:8421,rim:8,vsc:241,tap:253,sup:0,vscp:0,yt:44124,ig:53689},
+  {date:"2026-02-03",tm:239,rm:601,ch:1000,free:8418,rim:6,vsc:240,tap:273,sup:0,vscp:0,yt:44116,ig:53719},
+  {date:"2026-02-12",tm:251,rm:601,ch:1003,free:8405,rim:6,vsc:239,tap:279,sup:0,vscp:0,yt:44117,ig:53729},
+  {date:"2026-02-21",tm:259,rm:601,ch:1006,free:8410,rim:6,vsc:236,tap:277,sup:0,vscp:0,yt:44109,ig:53718},
+  {date:"2026-03-01",tm:266,rm:601,ch:1008,free:8410,rim:6,vsc:236,tap:272,sup:0,vscp:0,yt:44121,ig:53723},
+  {date:"2026-03-16",tm:283,rm:600,ch:1007,free:8391,rim:6,vsc:229,tap:268,sup:0,vscp:0,yt:44132,ig:53742},
+  {date:"2026-04-02",tm:299,rm:600,ch:1005,free:8379,rim:7,vsc:225,tap:261,sup:0,vscp:0,yt:44169,ig:53772},
+  {date:"2026-05-01",tm:392,rm:598,ch:1004,free:8392,rim:9,vsc:222,tap:277,sup:0,vscp:0,yt:44330,ig:54027},
 ];
 
 function load(){try{return JSON.parse(localStorage.getItem(KEY)||'[]');}catch(e){return[];}}
@@ -409,6 +455,10 @@ function renderAll(){
     sd('d-front',cf,pf);sd('d-paid',cp,pp);sd('d-free',fr,pfr);
     if(fd!==null){const el=document.getElementById('m-fdiff');el.textContent=(fd>0?'+':'')+fd;el.className='metric-value '+(fd>0?'c-ok':fd<0?'c-danger':'c-muted');}
     if(pd!==null){const el=document.getElementById('m-pdiff');el.textContent=(pd>0?'+':'')+pd;el.className='metric-value '+(pd>0?'c-ok':pd<0?'c-danger':'c-muted');}
+    const yt=last.yt||0,ig=last.ig||0,pyt=prev?(prev.yt||0):null,pig=prev?(prev.ig||0):null;
+    document.getElementById('m-yt').textContent=yt?yt.toLocaleString():'—';
+    document.getElementById('m-ig').textContent=ig?ig.toLocaleString():'—';
+    sd('d-yt',yt,pyt);sd('d-ig',ig,pig);
     const diag=diagnose(all,all.length-1);
     const steps=[diag.s1,diag.s2,diag.s3];
     const titles=['フロントエンドの状態','ファネルの状態','バックエンドの健全性'];
@@ -427,6 +477,42 @@ function renderAll(){
   if(mainChart)mainChart.destroy();
   const mc2=document.getElementById('main-chart');
   if(mc2) mainChart=new Chart(mc2,{type:'line',data:{labels,datasets:buildDatasets(filtered)},options:BASE_OPTS});
+
+  // SNSチャート
+  const snsFiltered=getFiltered(all).filter(r=>r.yt||r.ig);
+  if(snsFiltered.length){
+    const snsLabels=snsFiltered.map(r=>r.date);
+    const ytData=snsFiltered.map(r=>r.yt||0);
+    const igData=snsFiltered.map(r=>r.ig||0);
+    const frontData=snsFiltered.map(r=>ft(r));
+    const paidData=snsFiltered.map(r=>pt(r));
+    const ytDiffs=snsFiltered.map((r,i)=>i===0?0:(r.yt||0)-(snsFiltered[i-1].yt||0));
+    const igDiffs=snsFiltered.map((r,i)=>i===0?0:(r.ig||0)-(snsFiltered[i-1].ig||0));
+    const sc=document.getElementById('sns-chart');
+    const sdc=document.getElementById('sns-diff-chart');
+    if(sc){
+      if(window.snsChart)window.snsChart.destroy();
+      window.snsChart=new Chart(sc,{type:'line',data:{labels:snsLabels,datasets:[
+        {label:'YouTube',data:ytData,borderColor:'#ff0000',backgroundColor:'rgba(255,0,0,0.05)',fill:true,tension:.35,pointRadius:3,borderWidth:2,yAxisID:'ySNS'},
+        {label:'Instagram',data:igData,borderColor:'#e1306c',backgroundColor:'rgba(225,48,108,0.05)',fill:true,tension:.35,pointRadius:3,borderWidth:2,yAxisID:'ySNS'},
+        {label:'フロント',data:frontData,borderColor:'#3b82f6',fill:false,tension:.35,pointRadius:3,borderWidth:1.5,borderDash:[5,3],yAxisID:'yMember'},
+        {label:'バックエンド',data:paidData,borderColor:'#14b8a6',fill:false,tension:.35,pointRadius:3,borderWidth:1.5,borderDash:[5,3],yAxisID:'yMember'}
+      ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+        plugins:{legend:{display:false},tooltip:{backgroundColor:'#1e2229',borderColor:'rgba(255,255,255,0.12)',borderWidth:1,titleColor:'#e8eaf0',bodyColor:'#9ca3af',titleFont:{family:'DM Mono',size:11},bodyFont:{family:'DM Mono',size:11},padding:12,callbacks:{label:ctx=>`${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString()}`}}},
+        scales:{
+          x:{ticks:{color:'#6b7280',font:{family:'DM Mono',size:10},maxTicksLimit:12},grid:{color:'rgba(255,255,255,0.04)'}},
+          ySNS:{type:'linear',position:'right',ticks:{color:'#ff0000',font:{size:10},callback:v=>v.toLocaleString()},grid:{color:'rgba(255,255,255,0.04)'},title:{display:true,text:'SNS',color:'#6b7280',font:{size:10}}},
+          yMember:{type:'linear',position:'left',ticks:{color:'#3b82f6',font:{size:10},callback:v=>v.toLocaleString()},grid:{display:false},title:{display:true,text:'会員数',color:'#6b7280',font:{size:10}}}
+        }}});
+    }
+    if(sdc){
+      if(window.snsDiffChart)window.snsDiffChart.destroy();
+      window.snsDiffChart=new Chart(sdc,{type:'bar',data:{labels:snsLabels,datasets:[
+        {label:'YT増減',data:ytDiffs,backgroundColor:ytDiffs.map(v=>v>=0?'rgba(255,0,0,0.7)':'rgba(255,100,100,0.5)'),borderRadius:3,barPercentage:.45},
+        {label:'IG増減',data:igDiffs,backgroundColor:igDiffs.map(v=>v>=0?'rgba(225,48,108,0.7)':'rgba(225,48,108,0.4)'),borderRadius:3,barPercentage:.45}
+      ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#6b7280',font:{size:9},maxTicksLimit:12},grid:{color:'rgba(255,255,255,0.03)'}},y:{ticks:{color:'#6b7280',font:{size:9},callback:v=>(v>0?'+':'')+v},grid:{color:'rgba(255,255,255,0.04)'}}}}});
+    }
+  }
 
   if(diffChart)diffChart.destroy();
   const dc2=document.getElementById('diff-chart');
@@ -520,7 +606,7 @@ function saveData(){
   const records=load();
   const today=new Date().toISOString().slice(0,10);
   const idx=records.findIndex(r=>r.date===today);
-  const newRec={date:today,tm:g('in-tm'),rm:g('in-rm'),ch:g('in-ch'),free:g('in-free'),rim:g('in-rim'),vsc:g('in-vsc'),tap:g('in-tap'),sup:g('in-sup'),vscp:g('in-vscp')};
+  const newRec={date:today,tm:g('in-tm'),rm:g('in-rm'),ch:g('in-ch'),free:g('in-free'),rim:g('in-rim'),vsc:g('in-vsc'),tap:g('in-tap'),sup:g('in-sup'),vscp:g('in-vscp'),yt:g('in-yt'),ig:g('in-ig')};
   if(idx>=0){if(!confirm('今日のデータはすでに存在します。上書きしますか？'))return;records[idx]=newRec;}
   else records.push(newRec);
   save(records);
@@ -542,6 +628,41 @@ window.autoSave=function(data){
 };
 
 function clearAll(){if(confirm('全データを削除しますか？')){localStorage.removeItem(KEY);renderAll();}}
+
+function exportData(){
+  const records=load();
+  if(!records.length){alert('エクスポートするデータがありません');return;}
+  const blob=new Blob([JSON.stringify(records,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='vsc_data_'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();
+}
+
+function importData(input){
+  const file=input.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const data=JSON.parse(e.target.result);
+      if(!Array.isArray(data))throw new Error();
+      const existing=load();
+      const existingDates=new Set(existing.map(r=>r.date));
+      const toAdd=data.filter(r=>!existingDates.has(r.date));
+      const merged=[...existing,...toAdd].sort((a,b)=>a.date.localeCompare(b.date));
+      save(merged);
+      renderAll();
+      const result=document.getElementById('import-result');
+      result.style.display='block';
+      result.textContent='✓ '+merged.length+'件のデータをインポートしました（'+toAdd.length+'件追加）';
+    }catch(e){
+      alert('ファイルの読み込みに失敗しました。正しいJSONファイルを選択してください。');
+    }
+  };
+  reader.readAsText(file);
+  input.value='';
+}
 
 renderAll();
 </script>
